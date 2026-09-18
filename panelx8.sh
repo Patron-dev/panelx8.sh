@@ -523,41 +523,8 @@ creditos() {
   read -p "  Enter para volver..."
 }
 # -------------------- MENÚ PRINCIPAL --------------------
-menu_principal() {
-  while true; do
-    banner
-    local estado
-    estado=$(systemctl is-active "$SERVICE" 2>/dev/null || echo "no instalado")
-    echo -e "  Estado actual: ${estado}   |   Puerto: ${PUERTO:-—}"
-    linea
-    echo -e "  ${G}[1]${N}  Instalar / Reinstalar"
-    echo -e "  ${G}[2]${N}  Gestión de Usuarios"
-    echo -e "  ${G}[3]${N}  Control del Servicio"
-    echo -e "  ${G}[4]${N}  Información y Diagnóstico"
-    echo -e "  ${G}[5]${N}  Cambiar puerto SSH backend"
-    echo -e "  ${G}[6]${N}  Créditos"
-    echo -e "  ${R}[7]${N}  Desinstalar"
-    echo -e "  ${R}[0]${N}  Salir"
-    linea
-    read -r -p "  Selecciona una opción: " opcion
-    case $opcion in
-      1) instalar_servidor ;;
-      2) menu_usuarios ;;
-      3) menu_servicio ;;
-      4) info_sistema ;;
-      5)
-        read -r -p "  Nuevo puerto SSH backend [${SSHPORT}]: " nuevo
-        [ -n "$nuevo" ] && SSHPORT="$nuevo" && guardar_config && verde "Puerto SSH actualizado a $SSHPORT"
-        sleep 1
-        ;;
-      6) creditos ;;
-      7) desinstalar ;;
-      0) echo -e "\n  ${D}Panel BHTTP finalizado.${N}\n"; exit 0 ;;
-      *) rojo "Opción no válida" ;;
-    esac
-  done
-}
-
+check_root
+cargar_config
 # ============================================================
 # 🐲 ATAJO AUTOMÁTICO: panelx8
 # ============================================================
@@ -566,12 +533,7 @@ crear_atajo_panelx8() {
   chmod +x /usr/local/bin/panelx8
   echo -e "\n${G}✅ COMANDO LISTO → Escribí: panelx8${N}\n"
 }
-
 # Ejecutar al instalar
 crear_atajo_panelx8
-
-# -------------------- INICIO --------------------
-check_root
-cargar_config
 menu_principal
 
