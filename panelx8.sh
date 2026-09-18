@@ -558,25 +558,22 @@ menu_principal() {
   done
 }
 # -------------------- INICIO --------------------
-check_root
-cargar_config
-menu_principal
-# -------------------- INICIO --------------------
-check_root
-cargar_config
-menu_principal
 
-# ============================================================
-# 🐲 ATAJO AUTOMÁTICO — SE CREA AL FINAL, NO ANTES
-# ============================================================
+# Función para crear el atajo — DEFINIDA pero NO ejecutada todavía
 crear_atajo_panelx8() {
+  rm -f /usr/local/bin/panelx8 2>/dev/null
   if [ -f "$DESTDIR/bhttp-server.py" ]; then
-    ln -sf "$DESTDIR/bhttp-server.py" /usr/local/bin/panelx8 2>/dev/null
-    chmod +x /usr/local/bin/panelx8 2>/dev/null
+    ln -sf "$DESTDIR/bhttp-server.py" /usr/local/bin/panelx8
+    chmod +x /usr/local/bin/panelx8
     echo -e "\n${G}✅ COMANDO LISTO → Escribí: panelx8${N}\n"
   fi
 }
 
-# Crear el atajo DESPUÉS de todo
+# AHORA SÍ todo en orden
+check_root
+cargar_config
+menu_principal
+
+# Al salir del menú, se crea el atajo
 crear_atajo_panelx8
 
