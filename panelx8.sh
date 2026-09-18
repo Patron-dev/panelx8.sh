@@ -559,21 +559,21 @@ menu_principal() {
 }
 # -------------------- INICIO --------------------
 
-# Función para crear el atajo — DEFINIDA pero NO ejecutada todavía
+# Primero todo funciona normal
+check_root
+cargar_config
+menu_principal
+
+# ✅ CREAR EL ATAJO INMEDIATAMENTE DESPUÉS DE CARGAR TODO
 crear_atajo_panelx8() {
   rm -f /usr/local/bin/panelx8 2>/dev/null
-  if [ -f "$DESTDIR/bhttp-server.py" ]; then
+  if [ -d "$DESTDIR" ]; then
     ln -sf "$DESTDIR/bhttp-server.py" /usr/local/bin/panelx8
     chmod +x /usr/local/bin/panelx8
     echo -e "\n${G}✅ COMANDO LISTO → Escribí: panelx8${N}\n"
   fi
 }
 
-# AHORA SÍ todo en orden
-check_root
-cargar_config
-menu_principal
-
-# Al salir del menú, se crea el atajo
+# Se ejecuta INMEDIATAMENTE, no espera a salir
 crear_atajo_panelx8
 
