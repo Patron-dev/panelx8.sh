@@ -126,7 +126,7 @@ libre() { ! ocupados | grep -qx "$1"; }
 # -------------------- INSTALAR SERVIDOR --------------------
 instalar_servidor() {
   banner
-  echo -e "${W}  Instalando conexión BHTTP — VELOCIDAD MÁXIMA 🚀${N}"
+  echo -e "${W}  Instalando BHTTP — ESTABILIDAD TOTAL ✅${N}"
   linea
   command -v python3 >/dev/null 2>&1 || { rojo "Falta python3. Instálalo: apt install -y python3"; return 1; }
   paso "1/4" "Selección de puerto"
@@ -143,16 +143,16 @@ instalar_servidor() {
     rojo "El puerto $PUERTO está ocupado"; return 1
   fi
   info "Puerto seleccionado: $PUERTO  |  Backend SSH: 127.0.0.1:$SSHPORT"
-  paso "2/4" "Escribiendo servidor optimizado 🚀"
+  paso "2/4" "Escribiendo servidor optimizado ✅"
   mkdir -p "$DESTDIR"
   cat > "$SERVER_PY" << 'PYEOF'
 #!/usr/bin/env python3
-# Servidor BHTTP — VELOCIDAD MÁXIMA OPTIMIZADO 🚀
+# Servidor BHTTP — ESTABILIDAD TOTAL ✅ | Sin cortes, sin truncado
 import argparse, asyncio, hashlib, struct, sys
 MAGIC = b"BHP1"
-LONGPOLL = 0.5          # Respuesta inmediata ⚡
-MAX_SESSIONS = 1024     # Más conexiones simultáneas
-CHUNK_SIZE = 65536      # Bloques grandes → velocidad máxima
+LONGPOLL = 0.8          # ⚡ Rápido sin cortar
+CHUNK_SIZE = 1399       # ✅ Coincide EXACTO con el cliente → NUNCA TRUNCA
+MAX_SESSIONS = 512      # Soporta muchas conexiones
 TCP_NODELAY = True
 
 def log(msg):
@@ -197,17 +197,15 @@ class Session:
 
     async def connect(self):
         host, port = self.backend
-        self.br, self.bw = await asyncio.open_connection(
-            host, port, limit=2*1024*1024  # Buffer 2MB → videos 1080P sin cortes
-        )
-        self.bw.transport.set_nodelay(True)  # Sin demoras → ping mínimo
+        self.br, self.bw = await asyncio.open_connection(host, port)
+        self.bw.transport.set_nodelay(True)  # Sin demoras → ping bajo
         asyncio.create_task(self._reader())
 
     async def _reader(self):
         total = 0
         try:
             while True:
-                data = await self.br.read(CHUNK_SIZE)
+                data = await self.br.read(4096)
                 if not data: break
                 total += len(data)
                 async with self.cond:
@@ -237,7 +235,8 @@ class Session:
                 self.up_next += 1
 
     async def download(self, seq, maxlen, deadline):
-        if maxlen <= 0: maxlen = CHUNK_SIZE
+        if maxlen <= 0 or maxlen > CHUNK_SIZE:
+            maxlen = CHUNK_SIZE  # ✅ Fuerza tamaño exacto del cliente
         loop = asyncio.get_event_loop()
         async with self.cond:
             while True:
@@ -291,14 +290,13 @@ class Server:
         async with self.slock:
             s = self.sessions.get(sess)
             if s is None or s.closed:
-                # Limpiar sesiones viejas inactivas
+                # Limpiar sesiones viejas
                 now = asyncio.get_event_loop().time()
                 to_del = [sid for sid, old in self.sessions.items()
                           if old.closed or now - old.last_active > 300]
                 for sid in to_del:
                     await self.sessions[sid].close()
                     del self.sessions[sid]
-                # Limitar sesiones activas
                 if len(self.sessions) >= MAX_SESSIONS:
                     oldest = min(self.sessions.items(), key=lambda x: x[1].last_active)[0]
                     await self.sessions[oldest].close()
@@ -306,7 +304,6 @@ class Server:
                 s = Session(sess, self.backend)
                 await s.connect()
                 self.sessions[sess] = s
-                log("sesion %s: activas: %d" % (sess.hex()[:8], len(self.sessions)))
             return s
 
     async def handle(self, reader, writer):
@@ -334,7 +331,7 @@ class Server:
                     writer.write(bytes([0]) + (0).to_bytes(4, "big"))
                     await writer.drain()
                 elif mode == 2:
-                    chunk = await s.download(seq, ln if ln > 0 else CHUNK_SIZE,
+                    chunk = await s.download(seq, ln,
                         asyncio.get_event_loop().time() + LONGPOLL)
                     self._send_data(writer, sess, mode, seq, chunk)
                     await writer.drain()
@@ -344,8 +341,11 @@ class Server:
                         count = payload[5]
                     else:
                         chunk_size, count = CHUNK_SIZE, 1
-                    if chunk_size <= 0: chunk_size = CHUNK_SIZE
-                    if count <= 0: count = 1
+                    # ✅ Forzar tamaño seguro si viene inválido
+                    if chunk_size <= 0 or chunk_size > CHUNK_SIZE:
+                        chunk_size = CHUNK_SIZE
+                    if count <= 0:
+                        count = 1
                     deadline = asyncio.get_event_loop().time() + LONGPOLL
                     for i in range(count):
                         chunk = await s.download(seq + i, chunk_size, deadline)
@@ -373,10 +373,9 @@ class Server:
 
     async def serve(self):
         srv = await asyncio.start_server(
-            self.handle, self.host, self.port,
-            backlog=2048, limit=2*1024*1024
+            self.handle, self.host, self.port, backlog=512
         )
-        print("BHTTP VELOCIDAD MÁXIMA 🚀 escuchando en %s:%d → %s:%d" % (
+        print("BHTTP ESTABLE ✅ escuchando en %s:%d → %s:%d" % (
             self.host, self.port, self.backend[0], self.backend[1]), flush=True)
         async with srv:
             await srv.serve_forever()
@@ -402,7 +401,7 @@ PYEOF
   PYBIN="$(command -v python3)"
   cat > "$UNIT" <<EOF
 [Unit]
-Description=BHTTP — VELOCIDAD MÁXIMA 🚀
+Description=BHTTP — ESTABILIDAD TOTAL ✅
 After=network.target
 
 [Service]
@@ -414,7 +413,6 @@ StartLimitIntervalSec=60
 StartLimitBurst=10
 
 Environment=PYTHONUNBUFFERED=1
-Environment=PYTHONASYNCIODEBUG=0
 LimitNOFILE=65536
 LimitNPROC=4096
 TasksMax=8192
@@ -428,7 +426,7 @@ EOF
   paso "4/4" "Verificando estado"
   sleep 2
   if systemctl is-active --quiet "$SERVICE"; then
-    verde "✅ Servicio ACTIVO — Velocidad máxima activada 🚀"
+    verde "✅ Servicio ACTIVO — Sin cortes, estable 24/7"
     guardar_config
   else
     rojo "❌ El servicio no arrancó"
@@ -438,16 +436,15 @@ EOF
   local IP
   IP="$(curl -fsS --max-time 4 https://api.ipify.org 2>/dev/null || hostname -I | awk '{print $1}')"
   echo
-  verde "=== INSTALACIÓN COMPLETA — OPTIMIZADA 🚀 ==="
+  verde "=== INSTALACIÓN COMPLETA — ESTABLE ✅ ==="
   echo -e "  IP VPS    : ${W}${IP}${N}"
   echo -e "  Puerto    : ${W}${PUERTO}${N}"
-  echo -e "  Protocolo : ${W}BHTTP (Velocidad Máxima)${N}"
+  echo -e "  Protocolo : ${W}BHTTP (Sin truncado)${N}"
   echo -e "  Backend   : ${W}127.0.0.1:${SSHPORT}${N}"
-  echo -e "  YouTube   : ${W}1080P sin cortes${N}"
+  echo -e "  Estado    : ${W}Respuesta completa ✅${N}"
   echo
   read -p "  Presiona Enter para volver al menú..."
 }
-
 # -------------------- DESINSTALAR --------------------
 desinstalar() {
   banner
@@ -541,7 +538,7 @@ menu_servicio() {
     case $op in
       1) systemctl start "$SERVICE" && verde "Servicio iniciado" || rojo "Error"; sleep 1 ;;
       2) systemctl stop "$SERVICE" && verde "Servicio detenido" || rojo "Error"; sleep 1 ;;
-      2) systemctl stop "$SERVICE" && verde "Servicio detenido" || rojo "Error"; sleep 1 ;;
+      3) systemctl restart "$SERVICE" && verde "Servicio reiniciado" || rojo "Error"; sleep 1 ;;
       3) systemctl restart "$SERVICE" && verde "Servicio reiniciado" || rojo "Error"; sleep 1 ;;
       4) systemctl status "$SERVICE" --no-pager; read -p "Enter..." ;;
       5) echo -e "${Y}Ctrl+C para salir de los logs${N}"; sleep 1; journalctl -u "$SERVICE" -f ;;
